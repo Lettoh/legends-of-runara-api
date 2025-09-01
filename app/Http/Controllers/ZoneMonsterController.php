@@ -42,7 +42,7 @@ class ZoneMonsterController extends Controller
     public function store(Request $request, Zone $zone)
     {
         $data = $request->validate([
-            'monster_id' => ['required','exists:monster,id'],
+            'monster_id' => ['required','exists:monsters,id'],
             'spawn_chance'  => ['nullable','numeric','min:0','max:100'],
         ]);
 

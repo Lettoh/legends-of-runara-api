@@ -4,13 +4,16 @@ namespace App\Jobs;
 
 use App\Events\IdleRunFinished;
 use App\Events\IdleRunTicked;
+use App\Events\CharacterLeveledUp;          // <= NEW (event pour le watcher de stats)
 use App\Models\IdleRun;
 use App\Models\IdleRunLoot;
 use App\Models\IdleRunMonster;
 use App\Models\Monster;
 use App\Models\Zone;
-use App\Models\InventoryItem;              // [INVENTORY+]
-use App\Models\InventoryTransaction;       // [INVENTORY+]
+use App\Models\InventoryItem;
+use App\Models\InventoryTransaction;
+use App\Models\Character;
+use App\Support\Leveling;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -134,7 +137,7 @@ class ProcessIdleRun implements ShouldQueue
                     $goldGain += mt_rand($min, $max);
                 }
 
-                // XP
+                // XP (par rencontre)
                 $xpGain += $this->xpForMonster($sm['lvl']);
 
                 // Drops
@@ -160,7 +163,7 @@ class ProcessIdleRun implements ShouldQueue
                             $lootRow->increment('qty', $qty);
 
                             // 1) Transaction idempotente par rencontre
-                            $encNo = $run->encounters_done + 1; // 1-based: rencontre en cours
+                            $encNo = $run->encounters_done + 1; // 1-based
                             DB::table('inventory_transactions')->insertOrIgnore([
                                 'user_id'     => $run->user_id,
                                 'resource_id' => $r->id,
@@ -173,7 +176,7 @@ class ProcessIdleRun implements ShouldQueue
                                 'updated_at'  => now(),
                             ]);
 
-                            // 2) Stock visible (1 ligne par (user, resource))
+                            // 2) Stock visible
                             $item = InventoryItem::query()
                                 ->lockForUpdate()
                                 ->firstOrCreate(
@@ -186,9 +189,45 @@ class ProcessIdleRun implements ShouldQueue
                 }
             }
 
+            // ===== 5.bis) Donner l’XP EN ENTIER à chaque membre =====
+            $teamIds = collect($run->team_snapshot)->pluck('id')->filter()->all();
+            if (!empty($teamIds) && $xpGain > 0) {
+                // Lock des persos pour éviter les courses
+                $team = Character::query()
+                    ->whereIn('id', $teamIds)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($team as $ch) {
+                    $before = (int) $ch->level;
+
+                    // Chaque perso reçoit 100% de l’XP du tick
+                    $res = Leveling::applyGain($ch, $xpGain);
+                    $ch->save();
+
+                    $after = (int) $ch->level;
+
+                    // Si level-up => event pour que le listener augmente les stats
+                    if ($after > $before) {
+                        DB::afterCommit(function () use ($ch, $before, $after) {
+                            try {
+                                event(new CharacterLeveledUp($ch->fresh(), $before, $after, $after - $before));
+                            } catch (\Throwable $e) {
+                                Log::warning('CharacterLeveledUp dispatch failed', [
+                                    'char_id' => $ch->id,
+                                    'error'   => $e->getMessage(),
+                                ]);
+                            }
+                        });
+                    }
+                }
+            }
+
             // ===== 6) Avancer l’état du run =====
             $run->encounters_done++;
             $run->gold_earned += $goldGain;
+
+            // IMPORTANT : on stocke l’XP “par personnage” pour matcher l’UI
             $run->xp_earned   += $xpGain;
 
             if ($run->encounters_done >= $run->encounters_total) {
@@ -201,7 +240,7 @@ class ProcessIdleRun implements ShouldQueue
         });
 
         if (! $result instanceof IdleRun) {
-            return; // rien à diffuser / replanifier
+            return;
         }
 
         $run = $result;

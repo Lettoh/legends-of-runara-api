@@ -111,6 +111,12 @@ class IdleRunController extends Controller
                 ->orderByDesc('qty'),
         ])->findOrFail($id);
 
+        $teamSize = is_array($run->team_snapshot) ? count($run->team_snapshot) : 0;
+        $perMember = $teamSize > 0 ? intdiv((int)$run->xp_earned, $teamSize) : (int)$run->xp_earned;
+        $remainder = $teamSize > 0 ? ((int)$run->xp_earned % $teamSize) : 0;
+        $xpSplit = $teamSize > 0 ? array_fill(0, $teamSize, $perMember) : [];
+        for ($i = 0; $i < $remainder; $i++) { $xpSplit[$i]++; }
+
         return response()->json([
             'id'               => $run->id,
             'zone_id'          => $run->zone_id,
@@ -143,6 +149,10 @@ class IdleRunController extends Controller
                 'icon_url'    => $l->resource?->icon_url,
                 'qty'         => (int) $l->qty,
             ])->values(),
+
+            'team_size'      => $teamSize,
+            'xp_per_member'  => $perMember,
+            'xp_split'       => $xpSplit,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ZoneResource;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -43,7 +44,7 @@ class ZoneController extends Controller
         $perPage = $perPage > 100 ? 100 : ($perPage < 1 ? 12 : $perPage);
 
 
-        return response()->json($q->paginate($perPage));
+        return ZoneResource::collection($q->paginate($perPage));
     }
 
     public function store(Request $request)

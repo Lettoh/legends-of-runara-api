@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Leveling;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,8 @@ class Character extends Model
         'ascendancy_type_id',
         'user_id',
     ];
+
+    protected $appends = ['xp_to_next', 'xp_percent'];
 
     public function user(): BelongsTo
     {
@@ -44,7 +47,6 @@ class Character extends Model
         }
 
         // fallback par type_id -> fichier public/
-        // Mets 3 fichiers dans public/images/portraits/ : warrior.png, mage.png, archer.png
         $map = [
             1 => asset('images/portraits/warrior.png'), // Guerrier
             2 => asset('images/portraits/mage.png'),    // Mage
@@ -52,5 +54,21 @@ class Character extends Model
         ];
 
         return $map[$this->type_id] ?? asset('images/portraits/default.png');
+    }
+
+    public function gainXp(int $amount): array
+    {
+        return Leveling::applyGain($this, $amount);
+    }
+
+    public function getXpToNextAttribute(): int
+    {
+        return Leveling::xpToNext($this);
+    }
+
+    public function getXpPercentAttribute(): float
+    {
+        $need = $this->xp_to_next;
+        return $need > 0 ? round(100 * ((int)$this->xp) / $need, 2) : 100.0;
     }
 }
