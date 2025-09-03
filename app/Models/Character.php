@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 
 class Character extends Model
 {
@@ -33,6 +34,33 @@ class Character extends Model
     public function type(): BelongsTo
     {
         return $this->belongsTo(CharacterType::class, 'type_id');
+    }
+
+    public function getSpellsAttribute(): Collection
+    {
+        $this->loadMissing('type.spells');
+
+        $spells = $this->type?->spells ?? collect();
+
+        return $spells->values();
+    }
+
+    public function getUnlockedSpellsAttribute(): Collection
+    {
+        $this->loadMissing('type.spells');
+
+        $spells = $this->type?->spells ?? collect();
+
+        $level = (int) $this->level;
+        $asc   = $this->ascendancy_type_id; // peut être null
+
+        return $spells->filter(function ($spell) use ($level, $asc) {
+            $unlock = (int) ($spell->pivot->unlock_level ?? PHP_INT_MAX);
+            if ($unlock > $level) return false;
+
+            $req = $spell->pivot->required_specialization ?? null;
+            return $req === null || (string) $req === (string) $asc;
+        })->values();
     }
 
     public function getPortraitUrlAttribute(): string

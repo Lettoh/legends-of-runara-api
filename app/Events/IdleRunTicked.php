@@ -12,7 +12,7 @@ class IdleRunTicked implements ShouldBroadcastNow
 
     public function broadcastOn(): PrivateChannel
     {
-        return new PrivateChannel('idle.run'.$this->payload['id']);
+        return new PrivateChannel('idle.run.'.$this->payload['id']);
     }
     public function broadcastAs(): string
     {

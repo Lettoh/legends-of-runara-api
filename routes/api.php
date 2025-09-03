@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\CharacterTypeController;
+use App\Http\Controllers\CharacterTypeSpellController;
 use App\Http\Controllers\IdleRunController;
 use App\Http\Controllers\MonsterController;
 use App\Http\Controllers\MonsterResourceController;
 use App\Http\Controllers\ResourceController;
+use App\Http\Controllers\SpellController;
+use App\Http\Controllers\SpellStatusEffectController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\UserController;
@@ -72,6 +76,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get ('/idle/runs/{run}',     [IdleRunController::class, 'show']);
     Route::post('/idle/runs/{run}/stop',[IdleRunController::class, 'stop']);
     Route::post('/idle/runs/{run}/claim',[IdleRunController::class, 'claim']);
+
+    Route::get('/spells', [SpellController::class, 'index']);
+    Route::get('/spells/{spell}', [SpellController::class, 'show']);
+    Route::post('/spells', [SpellController::class, 'store'])->middleware('admin');
+    Route::put('/spells/{spell}', [SpellController::class, 'update'])->middleware('admin');
+    Route::patch('/spells/{spell}', [SpellController::class, 'update'])->middleware('admin');
+    Route::delete('/spells/{spell}', [SpellController::class, 'destroy'])->middleware('admin');
+
+    Route::post('/spells/{spell}/effects', [SpellStatusEffectController::class, 'store'])->middleware('admin');
+    Route::put('/spells/{spell}/effects/{effect}', [SpellStatusEffectController::class, 'update'])->middleware('admin');
+    Route::patch('/spells/{spell}/effects/{effect}', [SpellStatusEffectController::class, 'update'])->middleware('admin');
+    Route::delete('/spells/{spell}/effects/{effect}', [SpellStatusEffectController::class, 'destroy'])->middleware('admin');
+
+    // List classes
+    Route::get('/character-types', [CharacterTypeController::class, 'index']);
+    // Spells <-> Class pivot
+    Route::get('/character-types/{type}/spells', [CharacterTypeSpellController::class, 'index']);
+    Route::post('/character-types/{type}/spells/{spell}', [CharacterTypeSpellController::class, 'store']);
+    Route::patch('/character-types/{type}/spells/{spell}', [CharacterTypeSpellController::class, 'update']);
+    Route::delete('/character-types/{type}/spells/{spell}', [CharacterTypeSpellController::class, 'destroy']);
 });
 
 
