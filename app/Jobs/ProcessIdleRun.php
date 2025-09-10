@@ -189,6 +189,8 @@ class ProcessIdleRun implements ShouldQueue
                 }
             }
 
+            $give_xp = true;
+
             // ===== 5.bis) Donner l’XP EN ENTIER à chaque membre =====
             $teamIds = collect($run->team_snapshot)->pluck('id')->filter()->all();
             if (!empty($teamIds) && $xpGain > 0) {
@@ -200,6 +202,12 @@ class ProcessIdleRun implements ShouldQueue
 
                 foreach ($team as $ch) {
                     $before = (int) $ch->level;
+
+                    // Ne pas donner d'xp si le level dépasse le max level de la zone
+                    if ($ch->level >= $zone->max_level) {
+                        $give_xp = false;
+                        break;
+                    }
 
                     // Chaque perso reçoit 100% de l’XP du tick
                     $res = Leveling::applyGain($ch, $xpGain);
@@ -227,8 +235,8 @@ class ProcessIdleRun implements ShouldQueue
             $run->encounters_done++;
             $run->gold_earned += $goldGain;
 
-            // IMPORTANT : on stocke l’XP “par personnage” pour matcher l’UI
-            $run->xp_earned   += $xpGain;
+            // IMPORTANT : on stocke l’XP “par personnage” pour matcher l’UI que si on a donné de l'xp
+            if ($give_xp) $run->xp_earned   += $xpGain;
 
             if ($run->encounters_done >= $run->encounters_total) {
                 $run->status = 'finished';

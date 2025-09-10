@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\EquipItemRequest;
-use App\Models\{Character, CharacterEquipment, Item};
+use App\Models\{Character, CharacterEquipment, EquipmentSlot, Item};
 use Illuminate\Support\Facades\DB;
 
 class CharacterEquipmentController extends Controller
@@ -37,10 +37,10 @@ class CharacterEquipmentController extends Controller
     }
 
     // Déséquipe un slot
-    public function unequip(Character $character, int $slotId): \Illuminate\Http\JsonResponse
+    public function unequip(Character $character, EquipmentSlot $slot): \Illuminate\Http\JsonResponse
     {
         CharacterEquipment::where('character_id', $character->id)
-            ->where('slot_id', $slotId)
+            ->where('slot_id', $slot->id)
             ->delete();
 
         return response()->json(['ok' => true]);

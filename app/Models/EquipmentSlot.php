@@ -15,4 +15,6 @@ class EquipmentSlot extends Model
     public function itemBases(): HasMany {
         return $this->hasMany(ItemBase::class, 'slot_id');
     }
+
+    public function setCodeAttribute($v) { $this->attributes['code'] = strtolower($v); }
 }

@@ -26,7 +26,7 @@ class MonsterController extends Controller
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('level', $q)
             ))
-            ->orderBy('name')
+            ->orderBy('level')
             ->get()
             ->map(function ($m) {
                 return [
